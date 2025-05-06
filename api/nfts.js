@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
         }
 
         const blockfrost = new Blockfrost({
-            projectId: process.env.BLOCKFROST_API_KEY || 'YOUR_BLOCKFROST_API_KEY',
+            projectId: process.env.BLOCKFROST_API_KEY || 'preprodYnFO7lfgPJlgJSvXbCnh8LspzVzOYUu0',
             network: 'preprod'
         });
 
