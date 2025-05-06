@@ -1,4 +1,4 @@
-const Blockfrost = require('@blockfrost/blockfrost-js');
+const { BlockFrostAPI } = require('@blockfrost/blockfrost-js'); // Cambiar la importación
 
 module.exports = async (req, res) => {
     try {
@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
             return;
         }
 
-        const blockfrost = new Blockfrost({
+        const blockfrost = new BlockFrostAPI({ // Usar BlockFrostAPI
             projectId: process.env.BLOCKFROST_API_KEY,
             network: 'preprod'
         });
