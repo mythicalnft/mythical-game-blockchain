@@ -1,7 +1,0 @@
-{
-    "name": "mythical-tcg-backend",
-    "version": "1.0.0",
-    "dependencies": {
-        "@blockfrost/blockfrost-js": "^5.5.0"
-    }
-}
