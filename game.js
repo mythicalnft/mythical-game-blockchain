@@ -1,21 +1,59 @@
+const POLICY_ID = '0af26c4f3a8d3223c5fc22c666da02473c8c39d1b29a36723f3eb4b5';
 let userAddress = null;
+let nftImageUrl = null;
 
 document.getElementById('connectWallet').addEventListener('click', async () => {
-    if (window.cardano && window.cardano.nami) {
-        try {
-            await window.cardano.nami.enable();
-            const api = window.cardano.nami;
-            const usedAddresses = await api.getUsedAddresses();
-            userAddress = usedAddresses[0];
-            console.log("Conectado a:", userAddress);
-            startGame();
-        } catch (err) {
-            console.error("Error al conectar con la wallet:", err);
+    try {
+        const wallet = await connectWallet();
+        if (!wallet) {
+            alert("Instala Nami o Lace wallet.");
+            return;
         }
-    } else {
-        alert("Instala Nami Wallet para continuar.");
+
+        const api = await wallet.enable();
+        const usedAddresses = await api.getUsedAddresses();
+        userAddress = usedAddresses[0];
+        console.log("Conectado a:", userAddress);
+
+        nftImageUrl = await obtenerImagenNFT(userAddress, POLICY_ID);
+        startGame();
+
+    } catch (err) {
+        console.error("Error al conectar con la wallet:", err);
     }
 });
+
+async function connectWallet() {
+    if (window.cardano) {
+        if (window.cardano.nami) {
+            return window.cardano.nami;
+        } else if (window.cardano.lace) {
+            return window.cardano.lace;
+        }
+    }
+    return null;
+}
+
+async function obtenerImagenNFT(address, policyId) {
+    try {
+        const response = await fetch(`https://server.jpgstoreapis.com/user/${address}/assets`);
+        const data = await response.json();
+
+        const nfts = data?.assets?.filter(asset => asset.policy_id === policyId);
+
+        if (nfts && nfts.length > 0) {
+            const imageUrl = nfts[0].optimized_image || nfts[0].image;
+            console.log("NFT encontrado:", imageUrl);
+            return imageUrl;
+        } else {
+            console.log("No se encontró un NFT de la colección.");
+            return 'assets/player.png'; // fallback
+        }
+    } catch (e) {
+        console.error("Error al obtener NFT:", e);
+        return 'assets/player.png'; // fallback
+    }
+}
 
 function startGame() {
     const config = {
@@ -43,7 +81,7 @@ function startGame() {
 
     function preload() {
         this.load.image('ground', 'assets/ground.png');
-        this.load.image('player', 'assets/player.png');
+        this.load.image('player', nftImageUrl || 'assets/player.png');
     }
 
     function create() {
@@ -58,6 +96,11 @@ function startGame() {
 
         this.physics.add.collider(player, ground);
         cursors = this.input.keyboard.createCursorKeys();
+        this.input.on('pointerdown', () => {
+            if (player.body.touching.down) {
+                player.setVelocityY(-350);
+            }
+        });
     }
 
     function update() {
@@ -66,3 +109,4 @@ function startGame() {
         }
     }
 }
+
