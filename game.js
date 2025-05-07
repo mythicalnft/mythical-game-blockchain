@@ -1,112 +1,109 @@
-const POLICY_ID = '0af26c4f3a8d3223c5fc22c666da02473c8c39d1b29a36723f3eb4b5';
-let userAddress = null;
-let nftImageUrl = null;
+// Variable global para la wallet conectada
+let connectedWallet = null;
 
-document.getElementById('connectWallet').addEventListener('click', async () => {
-    try {
-        const wallet = await connectWallet();
-        if (!wallet) {
-            alert("Instala Nami o Lace wallet.");
-            return;
-        }
-
-        const api = await wallet.enable();
-        const usedAddresses = await api.getUsedAddresses();
-        userAddress = usedAddresses[0];
-        console.log("Conectado a:", userAddress);
-
-        nftImageUrl = await obtenerImagenNFT(userAddress, POLICY_ID);
-        startGame();
-
-    } catch (err) {
-        console.error("Error al conectar con la wallet:", err);
-    }
-});
-
+// Función para conectar la wallet
 async function connectWallet() {
+  try {
     if (window.cardano) {
-        if (window.cardano.nami) {
-            return window.cardano.nami;
-        } else if (window.cardano.lace) {
-            return window.cardano.lace;
-        }
+      const wallet = window.cardano; // Esto puede ser Eternl o Lace
+      await wallet.enable();
+      connectedWallet = wallet;
+      console.log('Conectado a la wallet:', wallet);
+      
+      // Llamamos a la función para obtener NFTs desde la wallet
+      await loadNFTsFromWallet();
+    } else {
+      alert('No se detectó una wallet compatible.');
     }
-    return null;
+  } catch (error) {
+    console.error('Error al conectar la wallet:', error);
+  }
 }
 
-async function obtenerImagenNFT(address, policyId) {
-    try {
-        const response = await fetch(`https://server.jpgstoreapis.com/user/${address}/assets`);
-        const data = await response.json();
+// Cargar NFTs desde la wallet
+async function loadNFTsFromWallet() {
+  try {
+    const utxos = await connectedWallet.getUtxos();
+    
+    // Filtramos los UTXOs que contienen NFTs
+    const nftUtxos = utxos.filter(utxo => {
+      return utxo.assets && utxo.assets.length > 0;
+    });
 
-        const nfts = data?.assets?.filter(asset => asset.policy_id === policyId);
-
-        if (nfts && nfts.length > 0) {
-            const imageUrl = nfts[0].optimized_image || nfts[0].image;
-            console.log("NFT encontrado:", imageUrl);
-            return imageUrl;
-        } else {
-            console.log("No se encontró un NFT de la colección.");
-            return 'assets/player.png'; // fallback
+    for (let utxo of nftUtxos) {
+      for (let asset of utxo.assets) {
+        const assetName = asset.assetName;
+        const policyId = asset.policyId;
+        
+        // Llamar a Blockfrost para obtener metadatos
+        const metadata = await fetchNFTMetadata(policyId, assetName);
+        
+        if (metadata) {
+          console.log('NFT Metadata:', metadata);
+          
+          // Cargar la imagen del NFT desde IPFS
+          const ipfsUrl = ipfsToHttp(metadata.image);
+          loadNFTSprite(ipfsUrl);
         }
-    } catch (e) {
-        console.error("Error al obtener NFT:", e);
-        return 'assets/player.png'; // fallback
+      }
     }
+  } catch (error) {
+    console.error('Error al cargar los NFTs:', error);
+  }
 }
 
-function startGame() {
-    const config = {
-        type: Phaser.AUTO,
-        width: 800,
-        height: 400,
-        physics: {
-            default: 'arcade',
-            arcade: {
-                gravity: { y: 300 },
-                debug: false
-            }
-        },
-        scene: {
-            preload: preload,
-            create: create,
-            update: update
-        },
-        parent: 'game-container'
-    };
-
-    const game = new Phaser.Game(config);
-    let player;
-    let cursors;
-
-    function preload() {
-        this.load.image('ground', 'assets/ground.png');
-        this.load.image('player', nftImageUrl || 'assets/player.png');
+// Obtener los metadatos del NFT usando Blockfrost
+async function fetchNFTMetadata(policyId, assetName) {
+  const blockfrostApiKey = 'YOUR_BLOCKFROST_API_KEY'; // Reemplazar con tu clave de Blockfrost
+  const url = `https://cardano-mainnet.blockfrost.io/api/v0/assets/${policyId}/${assetName}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'project_id': blockfrostApiKey
     }
+  });
 
-    function create() {
-        this.add.text(10, 10, "Jugador: " + (userAddress || "Desconocido"), { fontSize: '16px', fill: '#000' });
+  if (!response.ok) {
+    throw new Error('Error al obtener los metadatos del NFT');
+  }
 
-        const ground = this.physics.add.staticGroup();
-        ground.create(400, 390, 'ground').setScale(2).refreshBody();
-
-        player = this.physics.add.sprite(100, 300, 'player').setScale(1);
-        player.setBounce(0.2);
-        player.setCollideWorldBounds(true);
-
-        this.physics.add.collider(player, ground);
-        cursors = this.input.keyboard.createCursorKeys();
-        this.input.on('pointerdown', () => {
-            if (player.body.touching.down) {
-                player.setVelocityY(-350);
-            }
-        });
-    }
-
-    function update() {
-        if (cursors.up.isDown && player.body.touching.down) {
-            player.setVelocityY(-350);
-        }
-    }
+  const metadata = await response.json();
+  return metadata;
 }
+
+// Convertir URL IPFS a HTTP
+function ipfsToHttp(ipfsUrl) {
+  if (ipfsUrl.startsWith("ipfs://")) {
+    return ipfsUrl.replace("ipfs://", "https://ipfs.io/ipfs/");
+  }
+  return ipfsUrl;
+}
+
+// Cargar la imagen del NFT en Phaser
+function loadNFTSprite(ipfsUrl) {
+  const gameConfig = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    scene: {
+      preload: preload,
+      create: create
+    }
+  };
+
+  const game = new Phaser.Game(gameConfig);
+
+  function preload() {
+    this.load.image('nftSprite', ipfsUrl);
+  }
+
+  function create() {
+    const sprite = this.add.sprite(400, 300, 'nftSprite');
+    sprite.setScale(0.5);
+  }
+}
+
+// Asignar evento de clic al botón de conexión
+document.getElementById('connectButton').addEventListener('click', connectWallet);
+
 
