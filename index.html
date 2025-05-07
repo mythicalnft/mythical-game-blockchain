@@ -1,34 +1,16 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mythical Game</title>
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.js"></script>
-  <script src="game.js" defer></script>
-  <style>
-    body {
-      margin: 0;
-      background-color: #f0f0f0;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    }
-    #game-container {
-      margin: 20px auto;
-      width: 800px;
-      height: 400px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin-top: 20px;
-      cursor: pointer;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mythical NFT Game</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@cardano-foundation/cardano-wallet-js"></script>
 </head>
 <body>
-  <h1>Mythical Jump</h1>
-  <p>Conéctate con tu wallet (Nami o Lace) para jugar con tu NFT</p>
-  <button id="connectWallet">🔗 Conectar Wallet</button>
-  <div id="game-container"></div>
+  <h1>Mythical NFT Game</h1>
+  <button id="connectButton">Conectar Wallet</button>
+  <script src="game.js"></script>
 </body>
 </html>
+
